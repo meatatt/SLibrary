@@ -1,7 +1,8 @@
 ﻿module slibrary.traits;
 
+import std.traits: isFinalClass;
+
 template isInheritable(T){
-	import std.traits: isFinalClass;
 	static if(is(T:Object)&&!isFinalClass!T)
 		enum isInheritable=true;
 	else

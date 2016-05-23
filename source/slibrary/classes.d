@@ -1,8 +1,15 @@
 module slibrary.classes;
 
+import slibrary.traits: isInheritable;
+
+import std.format: format;
+import std.typecons:isTuple;
+import std.meta: allSatisfy;
+
+//Multiple Inheritance
 unittest{
 	static class A{
-		this(int i_){i=iA=i_;}
+		this(){i=iA=9;}
 		int i,iA;
 	}
 	interface I{int vi();}
@@ -22,23 +29,21 @@ unittest{
 		import std.typecons: tuple;
 		this(){
 			_super=new _Super(
-				0,
+				tuple(),
 				tuple(1,2),
 				3
 				);
 		}
 	}
 	auto z=new Z;
-	assert (z.i==0);
-	assert (z.iA==0);
+	assert (z.i==9);
+	assert (z.iA==9);
 	assert (z.iB==1);
 	assert (z.iZ==2);
 	assert (z.iC==3);
 	I i=z;
 	assert (i.vi()==z.iB);
 }
-import slibrary.traits: isInheritable;
-import std.meta: allSatisfy;
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	alias multipleInheritanceImpl!(1,Super) _Super;
@@ -50,7 +55,6 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	@property _Super _super_r(){return _super;}
 	alias _super_r this;
 }
-import std.typecons:isTuple;
 template multipleInheritanceImpl(size_t Index,Super...){
 	static assert (Super.length>0);
 	class multipleInheritanceImpl: Super[0]{
@@ -58,9 +62,10 @@ template multipleInheritanceImpl(size_t Index,Super...){
 			alias multipleInheritanceImpl!(Index+1,Super[1..$]) _Super;
 			private _Super _super;
 			//access N-super-class via _super_N
-			import std.conv: to;
-			mixin (q{alias _Super _Super_}~Index.to!string~";");
-			mixin (q{alias _super _super_}~Index.to!string~";");
+			mixin (q{
+					alias _Super _Super_%1$s;
+					alias _super _super_%1$s;
+				}.format(Index));
 			//permit direct access from outside
 			@property _Super _super_r(){return _super;}
 			alias _super_r this;
