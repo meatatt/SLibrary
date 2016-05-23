@@ -23,6 +23,7 @@ unittest{
 	static class C{
 		this(int i_){i=iC=i_;}
 		int i,iC;
+		int iO(){return iC;}
 	}
 	class Z{
 		mixin multipleInheritance!(A,B,C);
@@ -34,6 +35,7 @@ unittest{
 				3
 				);
 		}
+		int iO(){return -1;}
 	}
 	auto z=new Z;
 	assert (z.i==9);
@@ -41,16 +43,19 @@ unittest{
 	assert (z.iB==1);
 	assert (z.iZ==2);
 	assert (z.iC==3);
+	assert (z.iO()==-1);
 	I i=z;
 	assert (i.vi()==z.iB);
+	assert (z._super_2.i==z.iC);
+	static assert (is(typeof(z._super_1)==B));
 }
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	alias multipleInheritanceImpl!(1,Super) _Super;
-	private _Super _super;
+	protected _Super _super;
 	//access N-super-class via _super_N
-	alias _Super _Super_0;
-	alias _super _super_0;
+	alias Super[0] _Super_0;
+	@property _Super_0 _super_0(){return _super;}
 	//permit direct access from outside
 	@property _Super _super_r(){return _super;}
 	alias _super_r this;
@@ -60,13 +65,12 @@ template multipleInheritanceImpl(size_t Index,Super...){
 	class multipleInheritanceImpl: Super[0]{
 		static if (Super.length>1){
 			alias multipleInheritanceImpl!(Index+1,Super[1..$]) _Super;
-			private _Super _super;
+			protected _Super _super;
 			//access N-super-class via _super_N
 			mixin (q{
-					alias _Super _Super_%1$s;
-					alias _super _super_%1$s;
+					alias Super[1] _Super_%1$s;
+					@property _Super_%1$s _super_%1$s(){return _super;}
 				}.format(Index));
-			//permit direct access from outside
 			@property _Super _super_r(){return _super;}
 			alias _super_r this;
 		}
