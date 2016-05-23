@@ -1,19 +1,19 @@
 module slibrary.classes;
 
 unittest{
-	class A{
+	static class A{
 		this(int i_){i=iA=i_;}
 		int i,iA;
 	}
 	interface I{int vi();}
-	class B:I{
+	static class B:I{
 		this(int i_,int i__){i=iB=i_;iZ=i__;}
 		int i,iB,iZ;
 		override int vi() {
 			return iB;
 		}
 	}
-	class C{
+	static class C{
 		this(int i_){i=iC=i_;}
 		int i,iC;
 	}
@@ -21,7 +21,7 @@ unittest{
 		mixin multipleInheritance!(A,B,C);
 		import std.typecons: tuple;
 		this(){
-			_super=new Super(
+			_super=new _Super(
 				0,
 				tuple(1,2),
 				3
