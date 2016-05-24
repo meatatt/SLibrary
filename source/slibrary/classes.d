@@ -1,10 +1,7 @@
 module slibrary.classes;
 
-//import slibrary.traits: isInheritable,functionMatch;
-
-
 //Multiple Inheritance:
-//	Usage:
+// - Usage:
 unittest{
 	static class A{
 		this(){i=iA=9;}
@@ -28,7 +25,7 @@ unittest{
 		mixin multipleInheritance!(A,B,C);
 		import std.typecons: tuple;
 		this(){
-			_super_=new _Super(this,
+			_super_=new _Super_(this,
 				tuple(),
 				tuple(1,2),
 				3
@@ -55,7 +52,7 @@ unittest{
 	assert (c.iO()==z.iO());
 	assert (c.iO(10)!=z.iO(10));
 }
-//	Impl:
+// - Impl:
 import std.meta: allSatisfy;
 import slibrary.traits: isInheritable;
 struct Override(T)if (isInheritable!T){}
@@ -63,8 +60,8 @@ mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	import slibrary.traits: isInheritable;
 
-	alias multipleInheritanceImpl!(typeof(this),Super) _Super;
-	protected _Super _super_;
+	alias multipleInheritanceImpl!(typeof(this),Super) _Super_;
+	protected _Super_ _super_;
 	@property T _super(T)(){
 		static if (is(T==Super[0]))
 			return _super_;
@@ -72,26 +69,27 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 			return _super_._super!T;
 	}
 	//permit direct access from outside
-	@property _Super _super_r(){return _super_;}
+	@property _Super_ _super_r(){return _super_;}
 	alias _super_r this;
 
 	template multipleInheritanceImpl(This,Super_t...){
 		static assert (Super_t.length>0&&isInheritable!(Super_t[0]));
 		class multipleInheritanceImpl: Super_t[0]{
 			static if (Super_t.length>1){
-				alias multipleInheritanceImpl!(This,Super_t[1..$]) _Super;
-				protected _Super _super_;
+				alias multipleInheritanceImpl!(This,Super_t[1..$]) _Super_;
+				protected _Super_ _super_;
 				@property T _super(T)(){
 					static if (is(T==Super_t[1]))
 						return _super_;
 					else
 						return _super_._super!T;
 				}
-				@property _Super _super_r(){return _super_;}
+				@property _Super_ _super_r(){return _super_;}
 				alias _super_r this;
 			}
 			//Override Wrappers
 			private This _this;
+			import slibrary.classes: Override;
 			import slibrary.decTraits: dec_extractName,dec_getSymbolsByUDA;
 			mixin dec_extractName!();
 			mixin dec_getSymbolsByUDA!();
@@ -130,7 +128,7 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 			if (Params.length==Super_t.length){
 				_this=this_;
 				static if (Super_t.length>1)
-					_super_=new _Super(this_,params[1..$]);
+					_super_=new _Super_(this_,params[1..$]);
 				import std.typecons: isTuple;
 				static if (isTuple!(Params[0]))
 					super(params[0].expand);
