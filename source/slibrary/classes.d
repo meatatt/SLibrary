@@ -32,7 +32,7 @@ unittest{
 		mixin multipleInheritance!(A,B,C);
 		import std.typecons: tuple;
 		this(){
-			_super=new _Super(this,
+			_super_=new _Super(this,
 				tuple(),
 				tuple(1,2),
 				3
@@ -52,38 +52,41 @@ unittest{
 	assert (z.iO()==-1);
 	I i=z;
 	assert (i.vi()==z.vi());
-	assert (z._super_1.i==z.iB);
-	static assert (is(typeof(z._super_2)==C));
+	assert (z._super!B.i==z.iB);
+	static assert (is(typeof(z._super!C)==C));
 	C c=z;
-	assert (c is z._super_2);
+	assert (c is z._super!C);
 	assert (c.iO()==z.iO());
 	assert (c.iO(10)!=z.iO(10));
 }
 struct Override(T)if (isInheritable!T){}
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
-	alias multipleInheritanceImpl!(typeof(this),1,Super) _Super;
-	protected _Super _super;
-	//access N-super-class via _super_N
-	alias Super[0] _Super_0;
-	@property _Super_0 _super_0(){return _super;}
+	alias multipleInheritanceImpl!(typeof(this),Super) _Super;
+	protected _Super _super_;
+	@property T _super(T)(){
+		static if (is(T==Super[0]))
+			return _super_;
+		else
+			return _super_._super!T;
+	}
 	//permit direct access from outside
-	@property _Super _super_r(){return _super;}
+	@property _Super _super_r(){return _super_;}
 	alias _super_r this;
 }
-template multipleInheritanceImpl(This,size_t Index,Super...){
+template multipleInheritanceImpl(This,Super...){
 	static assert (Super.length>0&&isInheritable!(Super[0]));
 	class multipleInheritanceImpl: Super[0]{
-		static if (Filter!(isInheritable,Super).length>1){
-			alias multipleInheritanceImpl!(This,
-				Index+1,Super[1..$]) _Super;
-			protected _Super _super;
-			//access N-super-class via _super_N
-			mixin (q{
-					alias Super[1] _Super_%1$s;
-					@property _Super_%1$s _super_%1$s(){return _super;}
-				}.format(Index));
-			@property _Super _super_r(){return _super;}
+		static if (Super.length>1){
+			alias multipleInheritanceImpl!(This,Super[1..$]) _Super;
+			protected _Super _super_;
+			@property T _super(T)(){
+				static if (is(T==Super[1]))
+					return _super_;
+				else
+					return _super_._super!T;
+			}
+			@property _Super _super_r(){return _super_;}
 			alias _super_r this;
 		}
 		//override Impl
@@ -117,16 +120,13 @@ template multipleInheritanceImpl(This,size_t Index,Super...){
 						~" does not override any function");
 				}.format(thisOverloads_t.length,getName!(thisOverloads_t[0])));
 			mixin template superMatch(superOverloads_t...){
-				static if (functionMatch!(thisOverloads_t[0],superOverloads_t[0])){
+				static if (functionMatch!(thisOverloads_t[0],superOverloads_t[0]))
 					mixin(q{
 							override @functionAttributes!(superOverloads_t[0])
 								ReturnType!(superOverloads_t[0]) %1$s
 									(Parameters!(superOverloads_t[0]) param)
 							{return _this.%1$s(param);}
 						}.format(getName!(thisOverloads_t[0])));
-					enum Matched=true;
-					pragma (msg,"ok");
-				}
 				static if (superOverloads_t.length>1)
 					mixin superMatch!(superOverloads_t[1..$]);
 			}
@@ -138,7 +138,7 @@ template multipleInheritanceImpl(This,size_t Index,Super...){
 		if (Params.length==Super.length){
 			_this=this_;
 			static if (Super.length>1)
-				_super=new _Super(this_,params[1..$]);
+				_super_=new _Super(this_,params[1..$]);
 			static if (isTuple!(Params[0]))
 				super(params[0].expand);
 			else
