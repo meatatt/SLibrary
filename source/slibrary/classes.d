@@ -1,14 +1,10 @@
 module slibrary.classes;
 
-import slibrary.traits: isInheritable,countUntil,canOverride,
-	functionMatch,isRefFunction,getSymbolsByUDA,getName;
+//import slibrary.traits: isInheritable,functionMatch;
 
-import std.format: format;
-import std.typecons: isTuple;
-import std.meta: allSatisfy,Filter,AliasSeq;
-import std.traits: isNarrowString,ReturnType,Parameters,functionAttributes;
 
-//Multiple Inheritance
+//Multiple Inheritance:
+//	Usage:
 unittest{
 	static class A{
 		this(){i=iA=9;}
@@ -39,7 +35,7 @@ unittest{
 				);
 		}
 		@Override!C int iO(){return -1;}//override C.iO
-		//Error: static assert  "function Z.iO does not override any function"
+		//Can't override due to different attributes
 		/+@Override!C+/ int iO(int o){return o+1;}
 		@Override!B int vi(){return 7;}//override I.vi
 	}
@@ -59,9 +55,14 @@ unittest{
 	assert (c.iO()==z.iO());
 	assert (c.iO(10)!=z.iO(10));
 }
+//	Impl:
+import std.meta: allSatisfy;
+import slibrary.traits: isInheritable;
 struct Override(T)if (isInheritable!T){}
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
+	import slibrary.traits: isInheritable;
+
 	alias multipleInheritanceImpl!(typeof(this),Super) _Super;
 	protected _Super _super_;
 	@property T _super(T)(){
@@ -73,76 +74,69 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	//permit direct access from outside
 	@property _Super _super_r(){return _super_;}
 	alias _super_r this;
-}
-template multipleInheritanceImpl(This,Super...){
-	static assert (Super.length>0&&isInheritable!(Super[0]));
-	class multipleInheritanceImpl: Super[0]{
-		static if (Super.length>1){
-			alias multipleInheritanceImpl!(This,Super[1..$]) _Super;
-			protected _Super _super_;
-			@property T _super(T)(){
-				static if (is(T==Super[1]))
-					return _super_;
+
+	template multipleInheritanceImpl(This,Super_t...){
+		static assert (Super_t.length>0&&isInheritable!(Super_t[0]));
+		class multipleInheritanceImpl: Super_t[0]{
+			static if (Super_t.length>1){
+				alias multipleInheritanceImpl!(This,Super_t[1..$]) _Super;
+				protected _Super _super_;
+				@property T _super(T)(){
+					static if (is(T==Super_t[1]))
+						return _super_;
+					else
+						return _super_._super!T;
+				}
+				@property _Super _super_r(){return _super_;}
+				alias _super_r this;
+			}
+			//Override Wrappers
+			private This _this;
+			import slibrary.decTraits: dec_extractName,dec_getSymbolsByUDA;
+			mixin dec_extractName!();
+			mixin dec_getSymbolsByUDA!();
+			import std.meta: AliasSeq,Filter;
+			import std.traits: hasUDA,ReturnType,Parameters,functionAttributes;
+			alias AliasSeq!(getSymbolsByUDA!(This,Override!(Super_t[0]))) overrides;
+			template getOverloads(overrides_t...){
+				template hasMark(alias overload){
+					enum hasMark=hasUDA!(overload,Override!(Super_t[0]));
+				}
+				static if (overrides_t.length>0){
+					alias AliasSeq!(
+						Filter!(hasMark,
+							__traits(getOverloads,This,extractName!(overrides_t[0]))),
+						getOverloads!(overrides_t[1..$])) getOverloads;
+				}
 				else
-					return _super_._super!T;
+					alias AliasSeq!() getOverloads;
 			}
-			@property _Super _super_r(){return _super_;}
-			alias _super_r this;
-		}
-		//override Impl
-		private This _this;
-		alias AliasSeq!(getSymbolsByUDA!(This,Override!(Super[0]))) thisOverrides;
-		template getAllOverloads(thisOverrides_t...){
-			import std.traits: hasUDA;
-			template markedAsOverride(alias overload){
-				enum markedAsOverride=hasUDA!(overload,Override!(Super[0]));
+			alias getOverloads!overrides overloads;
+			static if (overloads.length>0)
+				mixin overrideImpl!overloads;
+			mixin template overrideImpl(overloads_t...){
+				import std.format: format;
+				mixin(q{
+						override @functionAttributes!(overloads_t[0])
+							ReturnType!(overloads_t[0]) %1$s
+								(Parameters!(overloads_t[0]) param)
+						{return _this.%1$s(param);}
+					}.format(extractName!(overloads_t[0])));
+				static if (overloads_t.length>1)
+					mixin overrideImpl!(overloads_t[1..$]);
 			}
-			static if (thisOverrides_t.length>0){
-				alias AliasSeq!(
-					Filter!(markedAsOverride,
-						__traits(getOverloads,This,getName!(thisOverrides_t[0]))),
-					getAllOverloads!(thisOverrides_t[1..$])) getAllOverloads;
+			//ctor forwarding
+			this(Params...)(This this_,Params params)
+			if (Params.length==Super_t.length){
+				_this=this_;
+				static if (Super_t.length>1)
+					_super_=new _Super(this_,params[1..$]);
+				import std.typecons: isTuple;
+				static if (isTuple!(Params[0]))
+					super(params[0].expand);
+				else
+					super(params[0]);
 			}
-			else
-				alias AliasSeq!() getAllOverloads;
-		}
-		alias getAllOverloads!thisOverrides thisOverloads;
-		static if (thisOverloads.length>0)
-			mixin thisMatch!thisOverloads;
-		mixin template thisMatch(thisOverloads_t...){
-			alias AliasSeq!(__traits(getVirtualMethods,Super[0],getName!(thisOverloads_t[0])))
-				superOverloads;
-			mixin (q{
-					mixin superMatch!superOverloads superMatch_%1$s;
-					static assert (is(typeof(this.superMatch_%1$s.%2$s)),
-						"function "
-						~This.stringof~'.'~getName!(thisOverloads_t[0])
-						~" does not override any function");
-				}.format(thisOverloads_t.length,getName!(thisOverloads_t[0])));
-			mixin template superMatch(superOverloads_t...){
-				static if (functionMatch!(thisOverloads_t[0],superOverloads_t[0]))
-					mixin(q{
-							override @functionAttributes!(superOverloads_t[0])
-								ReturnType!(superOverloads_t[0]) %1$s
-									(Parameters!(superOverloads_t[0]) param)
-							{return _this.%1$s(param);}
-						}.format(getName!(thisOverloads_t[0])));
-				static if (superOverloads_t.length>1)
-					mixin superMatch!(superOverloads_t[1..$]);
-			}
-			static if (thisOverloads_t.length>1)
-				mixin thisMatch!(thisOverloads_t[1..$]);
-		}
-		//ctor forwarding
-		this(Params...)(This this_,Params params)
-		if (Params.length==Super.length){
-			_this=this_;
-			static if (Super.length>1)
-				_super_=new _Super(this_,params[1..$]);
-			static if (isTuple!(Params[0]))
-				super(params[0].expand);
-			else
-				super(params[0]);
 		}
 	}
 }
