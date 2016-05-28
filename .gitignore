@@ -13,7 +13,7 @@
 
 # Executables
 *.exe
-./slibrary
+__test__library__
 
 # DUB
 .dub

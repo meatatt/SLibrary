@@ -1,29 +1,37 @@
 ﻿module slibrary.ct.meta;
 
-import std.meta: AliasSeq,templateNot,ApplyLeft,ApplyRight,Filter,anySatisfy;
+import std.meta: Alias,AliasSeq,templateNot,ApplyLeft,ApplyRight,Filter,anySatisfy;
 
-import slibrary.ct.predicate: isSame;
+import slibrary.ct.predicate: isSame,isFunction,isValue;
 
 alias None=AliasSeq!();
 
-template toSymbols(alias symbol,names...) {
-	static if (names.length>0)
-		alias toSymbols=AliasSeq!(mixin("symbol."~names[0]),toSymbols!(symbol,names[1..$]));
+template toSymbols(alias env,names...) {
+	static if (names.length>0){
+		alias symbol=AliasSeq!(mixin("env."~names[0]));
+		static if (isFunction!symbol)
+			alias toSymbols=AliasSeq!(__traits(getOverloads,env,names[0]),toSymbols!(env,names[1..$]));
+		else
+			alias toSymbols=AliasSeq!(symbol,toSymbols!(env,names[1..$]));
+	}
 	else
 		alias None toSymbols;
 }
 
-template staticPipe(templates...){
-	template staticPipeImpl(Args...){
-		static if (templates.length>0){
-			alias staticPipe!(templates[1..$]) _staticPipe;
-			alias templates[0] template_;
-			alias AliasSeq!(_staticPipe!(template_!Args)) staticPipeImpl;
-		}
-		else
-			alias Args staticPipeImpl;
+template TypeOf(a...)if (a.length==1&&isValue!(a[0])){
+	alias typeof(a[0]) TypeOf;
+}
+
+template staticPipe(Templates...){
+	static if (Templates.length>0)
+	template staticPipe(Args...){
+		alias nextPipe=.staticPipe!(Templates[1..$]);
+		alias Template=Templates[0];
+		alias nextArgs=Template!Args;
+		alias staticPipe=nextPipe!nextArgs;
 	}
-	alias staticPipeImpl staticPipe;
+	else
+		alias staticPipe(Args...)=Alias!Args;
 }
 
 alias templateNot!anySatisfy noneSatisfy;

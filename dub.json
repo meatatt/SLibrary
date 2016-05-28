@@ -1,6 +1,7 @@
 {
 	"name": "slibrary",
-	"description": "Meatatt's Dlang Library with amazing features.",
+	"description": "Meatatt's Dlang Library.",
 	"copyright": "Copyright © 2016, meatatt",
-	"authors": ["meatatt"]
+	"authors": ["meatatt"],
+	"targetType": "library"
 }

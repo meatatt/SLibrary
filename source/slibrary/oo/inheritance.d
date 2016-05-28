@@ -3,11 +3,12 @@ module slibrary.oo.inheritance;
 //Multiple Inheritance:
 // - Usage:
 unittest{
-	static class A{
+	interface I{int vi();}
+	static class A:I{
 		this(){i=iA=9;}
 		int i,iA;
+		override int vi(){return iA;}
 	}
-	interface I{int vi();}
 	static class B:I{
 		this(int i_,int i__){i=iB=i_;iZ=i__;}
 		int i,iB,iZ;
@@ -34,7 +35,7 @@ unittest{
 		@Override!C int iO(){return -1;}//override C.iO
 		//Can't override due to different attributes
 		/+@Override!C+/ int iO(int o){return o+1;}
-		@Override!B int vi(){return 7;}//override I.vi
+		@Override!(A,B) int vi(){return 7;}//override I.vi
 	}
 	auto z=new Z;
 	assert (z.i==9);
@@ -43,6 +44,8 @@ unittest{
 	assert (z.iZ==2);
 	assert (z.iC==3);
 	assert (z.iO()==-1);
+	assert (z.vi()==z._super!A.vi());
+	assert (z.vi()==z._super!B.vi());
 	I i=z;
 	assert (i.vi()==z.vi());
 	assert (z._super!B.i==z.iB);
@@ -57,10 +60,15 @@ import std.meta: allSatisfy;
 import slibrary.ct.predicate: isInheritable;
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
-	import slibrary.ct.predicate: isInheritable,isSame;
+	//Re-import because this is a mixin template
 	import std.meta: anySatisfy,ApplyRight;
 
-	static struct Override(T)if (anySatisfy!(ApplyRight!(isSame,T),Super));
+	import slibrary.ct.predicate: isInheritable,isSame;
+	import slibrary.ct.meta: staticPipe;
+
+	alias isParent(T)=anySatisfy!(ApplyRight!(isSame,T),Super);
+	static struct OverrideImpl(T...)if (allSatisfy!(isParent,T)){}
+	template Override(T...){enum Override=OverrideImpl!T();}
 
 	alias multipleInheritanceImpl!(typeof(this),Super) _Super_;
 	protected _Super_ _super_;
@@ -75,6 +83,14 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 	alias _super_r this;
 
 	template multipleInheritanceImpl(This,Super_t...){
+		import std.format: format;
+		import std.meta: AliasSeq,Filter,staticMap,ApplyLeft;
+		import std.traits: getUDAs,TemplateArgsOf,
+			ReturnType,Parameters,functionAttributes;
+
+		import slibrary.ct.uda: getMembersByUDA;
+		import slibrary.ct.meta: staticPipe,TypeOf,extractName;
+
 		static assert (Super_t.length>0&&isInheritable!(Super_t[0]));
 		static class multipleInheritanceImpl: Super_t[0]{
 			static if (Super_t.length>1){
@@ -92,32 +108,16 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 			}
 			//Override Wrappers
 			private This _this;
-
-			import slibrary.ct.uda: getMembersByUDA;
-			import slibrary.ct.meta: extractName;
-
-			import std.meta: AliasSeq,Filter;
-			import std.traits: hasUDA,ReturnType,Parameters,functionAttributes;
-
-			alias AliasSeq!(getMembersByUDA!(This,Override!(Super_t[0]))) overrides;
-			template getOverloads(overrides_t...){
-				template hasMark(alias overload){
-					enum hasMark=hasUDA!(overload,Override!(Super_t[0]));
-				}
-				static if (overrides_t.length>0){
-					alias AliasSeq!(
-						Filter!(hasMark,
-							__traits(getOverloads,This,extractName!(overrides_t[0]))),
-						getOverloads!(overrides_t[1..$])) getOverloads;
-				}
-				else
-					alias AliasSeq!() getOverloads;
-			}
-			alias getOverloads!overrides overloads;
+			alias overloads=Filter!(
+				staticPipe!(
+					ApplyRight!(getUDAs,OverrideImpl),
+					ApplyLeft!(staticMap,TypeOf),
+					ApplyLeft!(staticMap,ApplyRight!(TemplateArgsOf,OverrideImpl)),
+					ApplyLeft!(anySatisfy,ApplyRight!(isSame,Super_t[0]))),
+				getMembersByUDA!(This,OverrideImpl));
 			static if (overloads.length>0)
 				mixin overrideImpl!overloads;
 			mixin template overrideImpl(overloads_t...){
-				import std.format: format;
 				mixin(q{
 						override @functionAttributes!(overloads_t[0])
 							ReturnType!(overloads_t[0]) %1$s
