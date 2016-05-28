@@ -1,11 +1,15 @@
 ﻿module slibrary.ct.predicate;
 
-import std.meta: allSatisfy;
-import std.traits: isFinalClass;
+import std.meta: allSatisfy,
+	anySatisfy,
+	templateAnd,templateNot;
+import std.traits: isFinalClass,
+	BaseClassesTuple,InterfacesTuple,
+	isSomeFunction,isFunctionPointer;
 
-template isValue(v...)if (v.length==1){
-	enum isValue=__traits(compiles,typeof(v[0]));
-}
+import slibrary.ct.meta: ApplyLeft;
+
+enum isValue(v...)=v.length==1&&__traits(compiles,typeof(v[0]));
 
 template isSame(v...)if (v.length==2){
 	static if (allSatisfy!(isValue,v))
@@ -16,16 +20,15 @@ template isSame(v...)if (v.length==2){
 
 enum isInheritable(alias T)=is(T:Object)&&!isFinalClass!T;
 
+alias isInheritance(alias this_,alias super_)
+	=anySatisfy!(ApplyLeft!(isSame,super_),
+		BaseClassesTuple!this_,
+			InterfacesTuple!this_);
+
 enum isMixinTemplate(mixinTemplate,Args)=__traits(compiles,
 	{class X{mixin mixinTemplate!Args;}});
 
-public import std.traits: isFunction=isSomeFunction;
-/+
-template isFunction(f...)if (f.length==1){
-	static if (is(typeof(& T[0]) U : U*) && is(U == function) || is(typeof(& T[0]) U == delegate)){
-		enum isFunction=true;
-		pragma (msg,"get");
-	}
-	else
-		enum isFunction=false;
-}+/
+alias isFunction=templateAnd!(isSomeFunction,templateNot!isFunctionPointer);
+
+enum isTListNotEmpty(TList...)=TList.length>0;
+alias isTListEmpty=templateNot!isTListNotEmpty;

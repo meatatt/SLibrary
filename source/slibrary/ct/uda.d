@@ -2,13 +2,14 @@
 
 import std.format: format;
 import std.traits: getUDAs;
-import std.meta: AliasSeq,Filter;
+import std.meta: Filter;
 
-import slibrary.ct.meta: toSymbols,Exculde;
+import slibrary.ct.predicate: isSame,isTListNotEmpty;
+import slibrary.ct.meta: None,toSymbols,staticPipe,ApplyLeft,ApplyRight;
 
-template getMembersByUDA(alias symbol, alias attribute) {
-	enum hasSpecificUDA(string name)=
-		mixin(q{getUDAs!(symbol.%1$s, attribute)}.format(name)).length>0;
-	alias getMembersByUDA=toSymbols!(symbol,Filter!(hasSpecificUDA,
-			Exculde!"this".from!(__traits(allMembers,symbol))));
-}
+alias getMembersByUDA(alias symbol, alias attribute)
+	=Filter!(
+		staticPipe!(
+					ApplyRight!(getUDAs,attribute),
+					isTListNotEmpty),
+		toSymbols!(symbol,__traits(allMembers,symbol)));
