@@ -1,4 +1,4 @@
-module slibrary.classes;
+module slibrary.oo.inheritance;
 
 //Multiple Inheritance:
 // - Usage:
@@ -54,15 +54,17 @@ unittest{
 }
 // - Impl:
 import std.meta: allSatisfy;
-import slibrary.traits: isInheritable;
-struct Override(T)if (isInheritable!T){}
+import slibrary.ct.predicate: isInheritable;
 mixin template multipleInheritance(Super...)
 if (Super.length>0&&allSatisfy!(isInheritable,Super)){
-	import slibrary.traits: isInheritable;
+	import slibrary.ct.predicate: isInheritable,isSame;
+	import std.meta: anySatisfy,ApplyRight;
+
+	static struct Override(T)if (anySatisfy!(ApplyRight!(isSame,T),Super));
 
 	alias multipleInheritanceImpl!(typeof(this),Super) _Super_;
 	protected _Super_ _super_;
-	@property T _super(T)(){
+	@property T _super(T)()if (anySatisfy!(ApplyRight!(isSame,T),Super)){
 		static if (is(T==Super[0]))
 			return _super_;
 		else
@@ -74,11 +76,12 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 
 	template multipleInheritanceImpl(This,Super_t...){
 		static assert (Super_t.length>0&&isInheritable!(Super_t[0]));
-		class multipleInheritanceImpl: Super_t[0]{
+		static class multipleInheritanceImpl: Super_t[0]{
 			static if (Super_t.length>1){
 				alias multipleInheritanceImpl!(This,Super_t[1..$]) _Super_;
 				protected _Super_ _super_;
-				@property T _super(T)(){
+				@property T _super(T)()
+				if (anySatisfy!(ApplyRight!(isSame,T),Super)){
 					static if (is(T==Super_t[1]))
 						return _super_;
 					else
@@ -89,13 +92,14 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 			}
 			//Override Wrappers
 			private This _this;
-			import slibrary.classes: Override;
-			import slibrary.decTraits: dec_extractName,dec_getSymbolsByUDA;
-			mixin dec_extractName!();
-			mixin dec_getSymbolsByUDA!();
+
+			import slibrary.ct.uda: getMembersByUDA;
+			import slibrary.ct.meta: extractName;
+
 			import std.meta: AliasSeq,Filter;
 			import std.traits: hasUDA,ReturnType,Parameters,functionAttributes;
-			alias AliasSeq!(getSymbolsByUDA!(This,Override!(Super_t[0]))) overrides;
+
+			alias AliasSeq!(getMembersByUDA!(This,Override!(Super_t[0]))) overrides;
 			template getOverloads(overrides_t...){
 				template hasMark(alias overload){
 					enum hasMark=hasUDA!(overload,Override!(Super_t[0]));
