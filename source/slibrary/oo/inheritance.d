@@ -103,26 +103,23 @@ unittest{
 }
 // - Impl:
 static struct OverrideImpl(T...){}
-template multipleInheritanceImpl(This,Super_t...){
-	static assert (Super_t.length>0&&isInheritable!(Super_t[0]));
-
-	static class multipleInheritanceImpl: Super_t[0]{
-		static if (Super_t.length>1){
-			alias multipleInheritanceImpl!(This,Super_t[1..$]) _Super_;
-			protected _Super_ _super_;
-			@property T _super(T)()
-			if (anySatisfy!(ApplyRight!(isSame,T),Super_t)){
-				static if (is(T==Super_t[1]))
-					return _super_;
-				else
-					return _super_._super!T;
-			}
-			@property _Super_ _super_r(){return _super_;}
-			alias _super_r this;
+static class multipleInheritanceImpl(This,Super...): Super[0]{
+	static if (Super.length>1){
+		alias multipleInheritanceImpl!(This,Super[1..$]) _Super_;
+		protected _Super_ _super_;
+		@property T _super(T)()
+		if (anySatisfy!(ApplyRight!(isSame,T),Super)){
+			static if (is(T==Super[1]))
+				return _super_;
+			else
+				return _super_._super!T;
 		}
-		//Override Wrappers
-		private This _this;
-		alias overloads=Filter!(
+		@property _Super_ _super_r(){return _super_;}
+		alias _super_r this;
+	}
+	//Override Wrappers
+	private This _this;
+	mixin overrideImpl!(Filter!(
 			staticPipe!(
 				//member => UDAs
 				ApplyRight!(getUDAs,OverrideImpl),
@@ -133,32 +130,30 @@ template multipleInheritanceImpl(This,Super_t...){
 				//Is there any T
 				ApplyLeft!(anySatisfy,templateOr!(
 						// == Super ?
-						ApplyRight!(isSame,Super_t[0]),
+						ApplyRight!(isSame,Super[0]),
 						// OR: is a base class/interface of Super?
-						ApplyLeft!(isInheritedFrom,Super_t[0])))),
-			getMembersByUDA!(This,OverrideImpl));
-		mixin overrideImpl!overloads;
-		mixin template overrideImpl(overloads_t...){
-			static if (overloads_t.length>0){
-				mixin(q{
-						override @functionAttributes!(overloads_t[0])
-							ReturnType!(overloads_t[0]) %1$s
-								(Parameters!(overloads_t[0]) param)
-						{return _this.%1$s(param);}
-					}.format(__traits(identifier,overloads_t[0])));
-				mixin overrideImpl!(overloads_t[1..$]);
-			}
+						ApplyLeft!(isInheritedFrom,Super[0])))),
+			getMembersByUDA!(This,OverrideImpl)));
+	mixin template overrideImpl(overrides...){
+		static if (overrides.length>0){
+			alias overrides[0] override_;
+			mixin(q{
+					override @functionAttributes!override_ ReturnType!override_
+						%1$s(Parameters!override_ param)
+					{return _this.%1$s(param);}
+				}.format(__traits(identifier,override_)));
+			mixin overrideImpl!(overrides[1..$]);
 		}
-		//ctor forwarding
-		this(Params...)(This this_,Params params)
-		if (Params.length==Super_t.length){
-			_this=this_;
-			static if (Super_t.length>1)
-				_super_=new _Super_(this_,params[1..$]);
-			static if (isTuple!(Params[0]))
-				super(params[0].expand);
-			else
-				super(params[0]);
-		}
+	}
+	//ctor forwarding
+	this(Params...)(This this_,Params params)
+	if (Params.length==Super.length){
+		_this=this_;
+		static if (Super.length>1)
+			_super_=new _Super_(this_,params[1..$]);
+		static if (isTuple!(Params[0]))
+			super(params[0].expand);
+		else
+			super(params[0]);
 	}
 }
