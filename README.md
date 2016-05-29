@@ -1,5 +1,11 @@
-# SLibrary
+SLibrary – Meatatt's own Dlang Library
+===============================
+
+[![Build Status](https://travis-ci.org/meatatt/SLibrary.png?branch=master)][1]
+
 This is Meatatt's own Dlang Library, which will soon be filled with bunches of amazing features.
 
-# Current Features
- - Complete Multiple Inheritance
+
+Current Features
+------------
+ - Complete Multiple Inheritance Support
