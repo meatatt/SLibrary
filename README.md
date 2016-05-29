@@ -1,7 +1,7 @@
 SLibrary – Meatatt's own Dlang Library
 ===============================
 
-[![Build Status](https://travis-ci.org/meatatt/SLibrary.png?branch=master)][1]
+![Build Status](https://travis-ci.org/meatatt/SLibrary.png?branch=master)
 
 This is Meatatt's own Dlang Library, which will soon be filled with bunches of amazing features.
 
