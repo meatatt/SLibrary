@@ -2,14 +2,14 @@
 
 import std.meta: Filter;
 
-import slibrary.ct.predicate: isTListNonempty,isNotLocal;
+import slibrary.ct.predicate: isNonemptyTList,isNotLocal;
 import slibrary.ct.meta: toSymbols,staticPipe,ApplyRight;
 
 alias getMembersByUDA(alias symbol,alias attribute)
 	=Filter!(
 		staticPipe!(
 			ApplyRight!(getUDAs,attribute),
-			isTListNonempty),
+			isNonemptyTList),
 		//Remove local symbols
 		// which are not accessable from non-global templates
 		Filter!(isNotLocal,

@@ -30,8 +30,8 @@ enum isMixinTemplate(mixinTemplate,Args)=__traits(compiles,
 
 enum isFunction(alias f)=isSomeFunction!f&&!isFunctionPointer!f;
 
-enum isTListEmpty(TList...)=TList.length==0;
-enum isTListNonempty(TList...)=TList.length>0;
+enum isEmptyTList(TList...)=TList.length==0;
+enum isNonemptyTList(TList...)=TList.length>0;
 
 template isNotLocal(alias S){
 	template NonLocalTemplate(alias S){}

@@ -2,12 +2,12 @@
 
 import std.meta: Alias,AliasSeq,templateNot,Filter,anySatisfy;
 
-import slibrary.ct.predicate: isSame,isFunction,isValue,isTListNonempty,isNotLocal;
+import slibrary.ct.predicate: isSame,isFunction,isValue,isNonemptyTList,isNotLocal;
 
 alias None=AliasSeq!();
 
 template toSymbols(alias env,names...){
-	static if (isTListNonempty!names){
+	static if (isNonemptyTList!names){
 		static if (__traits(compiles,__traits(getMember,env,names[0]))){
 			alias symbol=Alias!(__traits(getMember,env,names[0]));
 			static if (isFunction!symbol)
@@ -32,7 +32,7 @@ template TypeOf(a...)if (a.length==1&&isValue!(a[0])){
 }
 
 template staticPipe(Templates...){
-	static if (isTListNonempty!Templates){
+	static if (isNonemptyTList!Templates){
 		alias nextPipe=.staticPipe!(Templates[1..$]);
 		alias Template=Templates[0];
 		alias staticPipe(Args...)=nextPipe!(Template!Args);
@@ -43,7 +43,7 @@ template staticPipe(Templates...){
 
 template staticCast(Templates...){
 	template staticCast(Args...){
-		static if (isTListNonempty!Templates){
+		static if (isNonemptyTList!Templates){
 			alias nextCast=.staticCast!(Templates[1..$]);
 			alias Template=Templates[0];
 			alias staticCast=AliasSeq!(Template!Args,nextCast!Args);

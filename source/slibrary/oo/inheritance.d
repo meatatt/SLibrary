@@ -7,11 +7,11 @@ import std.meta: anySatisfy,allSatisfy,AliasSeq,Filter,staticMap,templateOr;
 
 import slibrary.ct.uda: getMembersByUDA,getUDAs;
 import slibrary.ct.meta: staticPipe,TypeOf,ApplyLeft,ApplyRight;
-import slibrary.ct.predicate: isSame,isInheritable,isInheritedFrom;
+import slibrary.ct.predicate: isSame,isInheritable,isInheritedFrom,isNonemptyTList;
 
 //Multiple Inheritance:
-mixin template multipleInheritance(Super...)
-if (Super.length>0&&allSatisfy!(isInheritable,Super)){
+mixin template multipleInheritance(Supers...)
+if (isNonemptyTList!Supers&&allSatisfy!(isInheritable,Supers)){
 	//Re-import symbols because this is a mixin template
 	import std.meta: anySatisfy,allSatisfy,templateOr;
 	
@@ -25,13 +25,13 @@ if (Super.length>0&&allSatisfy!(isInheritable,Super)){
 					ApplyLeft!(ApplyRight,isSame),
 					ApplyLeft!(ApplyRight,isInheritedFrom)),
 				templateOr,
-				ApplyRight!(anySatisfy,Super))
+				ApplyRight!(anySatisfy,Supers))
 			,T)){enum Override=OverrideImpl!T();}
 	
-	alias multipleInheritanceImpl!(typeof(this),Super) _Super_;
+	alias multipleInheritanceImpl!(typeof(this),Supers) _Super_;
 	protected _Super_ _super_;
-	@property T _super(T)()if (anySatisfy!(ApplyRight!(isSame,T),Super)){
-		static if (is(T==Super[0]))
+	@property T _super(T)()if (anySatisfy!(ApplyRight!(isSame,T),Supers)){
+		static if (is(T==Supers[0]))
 			return _super_;
 		else
 			return _super_._super!T;
@@ -103,13 +103,13 @@ unittest{
 }
 // - Impl:
 static struct OverrideImpl(T...){}
-static class multipleInheritanceImpl(This,Super...): Super[0]{
-	static if (Super.length>1){
-		alias multipleInheritanceImpl!(This,Super[1..$]) _Super_;
+static class multipleInheritanceImpl(This,Super,Supers...): Super{
+	static if (isNonemptyTList!Supers){
+		alias multipleInheritanceImpl!(This,Supers) _Super_;
 		protected _Super_ _super_;
 		@property T _super(T)()
-		if (anySatisfy!(ApplyRight!(isSame,T),Super)){
-			static if (is(T==Super[1]))
+		if (anySatisfy!(ApplyRight!(isSame,T),Supers)){
+			static if (is(T==Supers[0]))
 				return _super_;
 			else
 				return _super_._super!T;
@@ -130,12 +130,12 @@ static class multipleInheritanceImpl(This,Super...): Super[0]{
 				//Is there any T
 				ApplyLeft!(anySatisfy,templateOr!(
 						// == Super ?
-						ApplyRight!(isSame,Super[0]),
+						ApplyRight!(isSame,Super),
 						// OR: is a base class/interface of Super?
-						ApplyLeft!(isInheritedFrom,Super[0])))),
+						ApplyLeft!(isInheritedFrom,Super)))),
 			getMembersByUDA!(This,OverrideImpl)));
 	mixin template overrideImpl(overrides...){
-		static if (overrides.length>0){
+		static if (isNonemptyTList!overrides){
 			alias overrides[0] override_;
 			mixin(q{
 					override @functionAttributes!override_ ReturnType!override_
@@ -146,14 +146,14 @@ static class multipleInheritanceImpl(This,Super...): Super[0]{
 		}
 	}
 	//ctor forwarding
-	this(Params...)(This this_,Params params)
-	if (Params.length==Super.length){
+	this(Param,Params...)(This this_,Param param,Params params)
+	if (Params.length==Supers.length){
 		_this=this_;
-		static if (Super.length>1)
-			_super_=new _Super_(this_,params[1..$]);
-		static if (isTuple!(Params[0]))
-			super(params[0].expand);
+		static if (isNonemptyTList!Supers)
+			_super_=new _Super_(this_,params);
+		static if (isTuple!Param)
+			super(param.expand);
 		else
-			super(params[0]);
+			super(param);
 	}
 }
