@@ -25,8 +25,8 @@ if (isNonemptyTList!Supers&&allSatisfy!(isInheritable,Supers)){
 					ApplyLeft!(ApplyRight,isSame),
 					ApplyLeft!(ApplyRight,isInheritedFrom)),
 				templateOr,
-				ApplyRight!(anySatisfy,Supers))
-			,T)){enum Override=OverrideImpl!T();}
+				ApplyRight!(anySatisfy,Supers)),
+			T)){enum Override=OverrideImpl!T();}
 	
 	alias multipleInheritanceImpl!(typeof(this),Supers) _Super_;
 	protected _Super_ _super_;
@@ -102,8 +102,8 @@ unittest{
 	assert (c_.iO(10)!=z.iO(10));
 }
 // - Impl:
-static struct OverrideImpl(T...){}
-static class multipleInheritanceImpl(This,Super,Supers...): Super{
+struct OverrideImpl(T...){}
+class multipleInheritanceImpl(This,Super,Supers...): Super{
 	static if (isNonemptyTList!Supers){
 		alias multipleInheritanceImpl!(This,Supers) _Super_;
 		protected _Super_ _super_;

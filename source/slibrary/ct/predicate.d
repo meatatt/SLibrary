@@ -9,7 +9,9 @@ import std.traits: isFinalClass,
 
 import slibrary.ct.meta: ApplyLeft;
 
-enum isValue(v...)=v.length==1&&__traits(compiles,typeof(v[0]));
+enum isValue(v...)=v.length==1
+	&&__traits(compiles,typeof(v[0]))
+		&&!is(typeof(v[0])==void);
 
 template isSame(v...)if (v.length==2){
 	static if (allSatisfy!(isValue,v))
