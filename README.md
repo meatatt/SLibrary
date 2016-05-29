@@ -9,3 +9,10 @@ This is Meatatt's own Dlang Library, which will soon be filled with bunches of a
 Current Features
 ------------
  - Complete Multiple Inheritance Support
+
+
+TODO
+------------
+ - Merge SLogging Library
+ - Add more featrues
+ - Add this to the online D package registry
