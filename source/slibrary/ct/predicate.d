@@ -20,7 +20,7 @@ template isSame(v...)if (v.length==2){
 
 enum isInheritable(alias T)=is(T:Object)&&!isFinalClass!T;
 
-alias isInheritance(alias this_,alias super_)
+alias isInheritedFrom(alias this_,alias super_)
 	=anySatisfy!(ApplyLeft!(isSame,super_),
 		BaseClassesTuple!this_,
 			InterfacesTuple!this_);
@@ -28,7 +28,12 @@ alias isInheritance(alias this_,alias super_)
 enum isMixinTemplate(mixinTemplate,Args)=__traits(compiles,
 	{class X{mixin mixinTemplate!Args;}});
 
-alias isFunction=templateAnd!(isSomeFunction,templateNot!isFunctionPointer);
+enum isFunction(alias f)=isSomeFunction!f&&!isFunctionPointer!f;
 
-enum isTListNotEmpty(TList...)=TList.length>0;
-alias isTListEmpty=templateNot!isTListNotEmpty;
+enum isTListEmpty(TList...)=TList.length==0;
+enum isTListNonempty(TList...)=TList.length>0;
+
+template isNotLocal(alias S){
+	template NonLocalTemplate(alias S){}
+	enum isNotLocal=__traits(compiles,NonLocalTemplate!S);
+}
