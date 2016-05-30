@@ -1,5 +1,6 @@
 ﻿module slibrary.ct.meta;
 
+import std.traits: isArray;
 import std.meta: Alias,AliasSeq,templateNot,Filter,anySatisfy;
 
 import slibrary.ct.predicate: isSame,isFunction,isValue,isNonemptyTList,isNotLocal;
@@ -45,6 +46,13 @@ template staticCast(Templates...){
 		else
 			alias None staticCast;
 	}
+}
+
+template toTList(alias ar)if (isArray!(typeof(ar))){
+	static if (ar.length>0)
+		alias toTList=AliasSeq!(ar[0],toTList!(ar[1..$]));
+	else
+		alias None toTList;
 }
 
 alias templateNot!anySatisfy noneSatisfy;
