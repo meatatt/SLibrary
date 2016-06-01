@@ -1,13 +1,14 @@
 ﻿module slibrary.ct.predicate;
 
-import std.meta: Filter,allSatisfy,anySatisfy,templateAnd,templateNot;
-import std.traits: isFinalClass,BaseClassesTuple,InterfacesTuple,
-	isSomeFunction,isFunctionPointer;
+import std.meta: Filter,allSatisfy,anySatisfy;
+import std.traits: isFinalClass,BaseClassesTuple,InterfacesTuple;
 
 import slibrary.flags: extractFlags;
 import slibrary.ct.meta: ApplyLeft,ApplyRight,toTList,staticPipe;
 
 enum isValue(v...)=v.length==1&&getCategory!v&Category.Value;
+
+enum isTList(v...)=v.length!=1&&getCategory!v&Category.Tuple;
 
 template isSame(v...)if (v.length==2){
 	static if (allSatisfy!(isValue,v))
@@ -33,21 +34,7 @@ enum isNonemptyTList(TList...)=TList.length>0;
 
 enum isNotLocal(alias S)=!(getCategory!(S)&Category.Local);
 
-unittest{with(Category){
-		static assert (extractFlags(getCategory!())==[Tuple]);
-		enum e=0;
-		static assert (extractFlags(getCategory!e)==[Literal,Value]);
-		enum E;
-		static assert (extractFlags(getCategory!E)==[Symbol,Type]);
-		static assert (extractFlags(getCategory!(void,int))==[Tuple,Type]);
-		void f(){}
-		static assert (extractFlags(getCategory!f)==[Symbol,Local,Function]);
-		int i;
-		static assert (extractFlags(getCategory!i)==[Symbol,Local,Value]);
-		static assert (extractFlags(getCategory!(f,i))==[Tuple,Symbol,Local]);
-		static int si;
-		static assert (extractFlags(getCategory!si)==[Symbol,Value]);
-	}}
+enum getCategory(A...)=parseCategory!A();
 enum Category:uint{
 	NONE			=0,
 	
@@ -62,7 +49,25 @@ enum Category:uint{
 	Template		=1<<6,
 	Function		=1<<7
 }
-enum getCategory(A...)=parseCategory!A();
+// Tests:
+unittest{with(Category){
+		static assert (extractFlags(getCategory!())==[Tuple]);
+		enum e=0;
+		static assert (extractFlags(getCategory!e)==[Literal,Value]);
+		enum E;
+		static assert (extractFlags(getCategory!E)==[Symbol,Type]);
+		static assert (extractFlags(getCategory!(void,int))==[Tuple,Type]);
+		void f(){}
+		static assert (extractFlags(getCategory!f)==[Symbol,Local,Function]);
+		int i;
+		static assert (extractFlags(getCategory!i)==[Symbol,Local,Value]);
+		static assert (extractFlags(getCategory!(f,i))==[Tuple,Symbol,Local]);
+		static int si;
+		static assert (extractFlags(getCategory!si)==[Symbol,Value]);
+		template t(){}
+		static assert (extractFlags(getCategory!t)==[Symbol,Template]);
+	}}
+// - Impl:
 private static Category parseCategory(A...)()
 out(res){assert (res!=Category.NONE);}
 body{if (__ctfe)with(Category){

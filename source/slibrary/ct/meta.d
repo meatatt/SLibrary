@@ -3,19 +3,20 @@
 import std.traits: isArray;
 import std.meta: Alias,AliasSeq,templateNot,Filter,anySatisfy;
 
-import slibrary.ct.predicate: isSame,isFunction,isValue,isNonemptyTList,isNotLocal;
+import slibrary.ct.predicate: isSame,isFunction,isValue,isTList,
+	isNonemptyTList,isNotLocal;
 
 alias None=AliasSeq!();
 
 alias toSymbols(alias env)=None;
 template toSymbols(alias env,alias name,names...){
 	static if (__traits(compiles,__traits(getMember,env,name))){
-		alias symbol=Alias!(__traits(getMember,env,name));
-		static if (isFunction!symbol)
-			alias toSymbols=AliasSeq!(__traits(getOverloads,env,name),
+		alias symbol=SmartAlias!(__traits(getMember,env,name));
+		static if (!isTList!symbol&&isFunction!symbol)
+			alias toSymbols=SmartAlias!(__traits(getOverloads,env,name),
 				toSymbols!(env,names));
 		else
-			alias toSymbols=AliasSeq!(symbol,toSymbols!(env,names));
+			alias toSymbols=SmartAlias!(symbol,toSymbols!(env,names));
 	}
 	else{
 		import slibrary.ct.log: Warning;
@@ -46,6 +47,16 @@ template staticCast(Templates...){
 		else
 			alias None staticCast;
 	}
+}
+
+deprecated
+alias staticFind(alias pred,Args...)=staticFindImpl!(0,pred,Args);
+private enum staticFindImpl(size_t Index,alias pred)=-1;
+private template staticFindImpl(size_t Index,alias pred,alias Arg,Args...){
+	static if (pred!Arg)
+		enum staticFindImpl=Index;
+	else
+		alias staticFindImpl=staticFindImpl!(Index+1,pred,Args);
 }
 
 template toTList(alias ar)if (isArray!(typeof(ar))){
