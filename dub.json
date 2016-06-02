@@ -3,5 +3,12 @@
 	"description": "Meatatt's Dlang Library.",
 	"copyright": "Copyright © 2016, meatatt",
 	"authors": ["meatatt"],
-	"targetType": "library"
+	"targetType": "library",
+	"configurations": [
+		{"name": "normal"},
+		{
+			"name": "development",
+			"versions": ["SLibraryVerbose"]
+		}
+	]
 }

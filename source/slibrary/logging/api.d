@@ -6,14 +6,23 @@ enum ArgFlags:uint{
 	i =1<<2
 }
 
+struct TraceInfo{
+	int    line;
+	string file;
+	string funcName;
+	string prettyFuncName;
+	string moduleName;
+}
+
 mixin template LogAPI(alias Impl){
 	alias LogLevel=Impl.LogLevel;
 	alias LogArgDefine=Impl.LogArgDefine;
+	alias LogAPIMixin=Impl.LogAPIMixin;
 
 	import std.format: format;
 	import std.meta: Filter,Alias,staticIndexOf,staticMap;
 
-	import slibrary.logging.api: ArgFlags;
+	import slibrary.logging.api: ArgFlags,TraceInfo;
 	import slibrary.ct.meta: toSymbols,ApplyLeft,TypeOf;
 	import slibrary.ct.predicate: isNonemptyTList,isFunction;
 
@@ -25,8 +34,10 @@ mixin template LogAPI(alias Impl){
 			string prettyFuncName=__PRETTY_FUNCTION__,
 			string moduleName	 =__MODULE__,
 			_Args...)(_Args _args){
+			auto traceInfo=new immutable TraceInfo(
+				line,file,funcName,prettyFuncName,moduleName);
 			mixin parseCTArgs!([],__traits(allMembers,LogArgDefine));
-			// Not Implemented.
+			mixin (LogAPIMixin);
 		}
 	}
 	mixin perLevelMethod!(__traits(allMembers,Impl.LogLevel));
@@ -39,7 +50,8 @@ private:
 	}
 	mixin template parseCTArgs(string[] namesOfNotFoundArgs){
 		static assert (CTArgs.length==
-			__traits(allMembers,LogArgDefine).length-namesOfNotFoundArgs.length);
+			__traits(allMembers,LogArgDefine).length-namesOfNotFoundArgs.length,
+			"Unexpected Compile Time Args");
 		mixin parseRTArgs!(0,0,namesOfNotFoundArgs);
 	}
 	mixin template parseCTArgs(string[] notFound,string name,names...){
@@ -73,11 +85,11 @@ private:
 					mixin parseRTArgs!(Index+1,0,
 						names[0..nIndex]~names[nIndex+1..$]);
 				}
-				else
-					mixin parseRTArgs!(Index,nIndex+1,names);
+				else//End
+					mixin parseRTArgs!(Index,names);
 			}
 			else
-				mixin parseRTArgs!(Index,names);
+				mixin parseRTArgs!(Index,nIndex+1,names);
 		}
 	}
 	mixin template autoInitArgs(string[] names){

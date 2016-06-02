@@ -8,7 +8,8 @@ This is Meatatt's own Dlang Library, which will soon be filled with bunches of a
 
 Current Features
 ------------
- - Complete Multiple Inheritance Support
+ - Complete Multiple Inheritance
+ - Cross-platform Colorized Terminal
 
 
 TODO
