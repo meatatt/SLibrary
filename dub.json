@@ -3,12 +3,13 @@
 	"description": "Meatatt's Dlang Library.",
 	"copyright": "Copyright © 2016, meatatt",
 	"authors": ["meatatt"],
+	"license": "GPL-3.0",
 	"targetType": "library",
 	"configurations": [
-		{"name": "normal"},
+		{"name": "default"},
 		{
-			"name": "development",
-			"versions": ["SLibraryVerbose"]
+			"name": "dev",
+			"versions": ["SLibraryWarning","SLibraryVerboseUnittest"]
 		}
 	]
 }

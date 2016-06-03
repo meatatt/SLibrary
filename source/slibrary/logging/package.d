@@ -4,6 +4,6 @@ import slibrary.logging.api: LogAPI;
 import slibrary.logging.impl: defaultImpl;
 
 mixin LogAPI!defaultImpl;
-version (SLibraryVerbose) unittest{
+version (SLibraryVerboseUnittest) unittest{
 	error("Test");
 }

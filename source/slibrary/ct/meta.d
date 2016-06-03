@@ -27,6 +27,8 @@ template toSymbols(alias env,alias name,names...){
 
 template TypeOf(alias a)if (isValue!a){alias typeof(a) TypeOf;}
 
+enum Pred(bool boolean)=boolean;
+
 template staticPipe(Templates...){
 	static if (isNonemptyTList!Templates){
 		alias nextPipe=.staticPipe!(Templates[1..$]);
@@ -46,6 +48,15 @@ template staticCast(Templates...){
 		}
 		else
 			alias None staticCast;
+	}
+}
+
+template staticSelect(alias pred,alias True,alias False){
+	template staticSelect(Args...){
+		static if (pred!Args)
+			alias staticSelect=True;
+		else
+			alias staticSelect=False;
 	}
 }
 
