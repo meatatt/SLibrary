@@ -17,8 +17,8 @@ string strerror(int errno) @trusted{
 		auto s = strerror_r(errno, buf.ptr, buf.length);
 	}
 	else{
-		import core.stdc.string: strerror;
-		auto s = core.stdc.string.strerror(errno);
+		import core.stdc.string: c_strerror=strerror;
+		auto s=c_strerror(errno);
 	}
 	return assumeUnique(s.tempDString);
 }

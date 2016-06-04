@@ -2,11 +2,11 @@
 
 import std.stdio: stderr,stdout;
 
-import slibrary.ct.tricks: MemberMap;
+import slibrary.ct.tricks: EnumMap;
 import slibrary.ct.meta: staticSelect,staticFunction,Pred,ApplyLeft;
 
-alias FGColorBright=MemberMap!(FGColor,staticFunction!Bright);
-alias BGColorBright=MemberMap!(BGColor,staticFunction!Bright);
+alias FGColorBright=EnumMap!(staticFunction!Bright,FGColor);
+alias BGColorBright=EnumMap!(staticFunction!Bright,BGColor);
 
 alias setFGColor=ApplyLeft!(setColor,false);
 alias setBGColor=ApplyLeft!(setColor,true);

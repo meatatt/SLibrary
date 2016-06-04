@@ -9,6 +9,7 @@ import std.uni: toUpper;
 import std.meta: AliasSeq;
 import std.ascii: newline;
 import std.variant: Variant;
+import std.exception: enforce;
 import std.format: formattedWrite;
 import std.array: Appender,appender;
 import std.algorithm.iteration: each;
@@ -18,10 +19,10 @@ import std.algorithm.mutation: remove,SwapStrategy;
 import std.concurrency: Tid,spawn,send,receive,receiveTimeout,OwnerTerminated;
 
 import slibrary.c: strerror;
-import slibrary.ct.tricks: dynamicEnumMap;
 import slibrary.logging.api: AF=ArgFlags,TraceInfo;
 import slibrary.colorize: ColorBaseType,FGColorBright,
 	setFGColor,setFGColorStdErr,restore,restoreStdErr;
+import slibrary.ct.tricks: EnumMap,dynamicEnumMap;
 
 alias slibrary.logging.impl defaultImpl;
 
@@ -32,7 +33,7 @@ Tid loggingDaemon(){
 shared static this(){
 	atomicStore(_daemonTid,cast(shared)spawn(&_loggingDaemon));
 }
-void informDaemon(T)(T arg){
+void informDaemon(T)(lazy T arg){
 	loggingDaemon.send(arg);
 }
 
@@ -49,7 +50,8 @@ enum LogLevel:ubyte{
 }
 
 alias levelName=dynamicEnumMap!(LevelName,LogLevel);
-enum LevelName(LogLevel lv)=lv.text.toUpper;
+alias LevelName=EnumMap!(LevelNameOf,LogLevel);
+enum LevelNameOf(LogLevel lv)=lv.text.toUpper;
 
 bool isLogActiveAt(LogLevel logLevel){
 	if (logLevel==LogLevel.trace)
@@ -67,7 +69,7 @@ struct LogArgDefine{
 	alias condition=AliasSeq!(bool,AF.ct|AF.rt|AF.i,true);
 	alias msg=AliasSeq!(string,AF.ct|AF.i,genMsg,"errno","args");
 }
-string genMsg(Args...)(int errno,Args args){
+string genMsg(Args...)(int errno,lazy Args args){
 	static if (args.length==0)
 		return errno.strerror;
 	else
@@ -78,11 +80,10 @@ enum LogAPIMixin=q{
 	import std.conv: text;
 	import std.datetime: Clock;
 	import std.concurrency: send,thisTid;
-	import slibrary.c: strerror;
-	import slibrary.logging.impl: loggingDaemon,isLogActiveAt,LogEntry;
+	import slibrary.logging.impl: informDaemon,isLogActiveAt,LogEntry;
 
 	if (condition&&isLogActiveAt(logLevel))
-	loggingDaemon.send(LogEntry(
+	informDaemon(LogEntry(
 			&traceInfo,logLevel,errno,
 			thisTid.text,Clock.currTime,msg));
 };
@@ -116,7 +117,7 @@ private:
 class SLogger: Logger{
 	this(LogLevel lv){
 		super(lv);
-		lastStamp=SysTime(DateTime.init);
+		lastTimeStamp=SysTime(DateTime.init);
 	}
 	void insertFile(string fn){files~=File(fn, "a");}
 	void insertFile(File file){files~=file;}
@@ -133,7 +134,11 @@ class SLogger: Logger{
 	void plainStdErr(){_isColorizeStdErr=false;}
 	void plainStdOut(){_isColorizeStdOut=false;}
 	override void writelog(in LogEntry logEntry){with(logEntry){
-			buf=appender!string;
+			auto buf=appender!string;
+			void flush(){
+				files.each!(f=>f.lockingTextWriter.put(buf.data));
+				buf=appender!string;
+			}
 
 			if (isDateMarkRequired(timestamp))
 				buf.formattedWrite("---%04d-%02d-%02d---%s",
@@ -163,30 +168,33 @@ class SLogger: Logger{
 			flush();
 		}}
 	override void opCall(Variant var) {
-		if (var.type==typeid(string))
-			insertFile(var.get!string);
-		else if (var.type==typeid(File))
-			insertFile(var.get!File);
+		if (var.type==typeid(string)){
+			auto files_=files;
+			removeFile(var.get!string);
+			//If unchanged
+			if (files.length==files_.length)
+				insertFile(var.get!string);
+		}
+		else if (var.type==typeid(File)){
+			auto files_=files;
+			removeFile(var.get!File);
+			//If unchanged
+			if (files.length==files_.length)
+				insertFile(var.get!File);
+		}
 		else super.opCall(var);
 	}
 private:
-	Appender!string buf;
 	File[] files;
-	void flush(){
-		files.each!(f=>f.lockingTextWriter.put(buf.data));
-		buf=appender!string;
-	}
 	bool _isColorizeStdErr,_isColorizeStdOut;
-	ColorBaseType getColor(LogLevel lv){
-		with(LogLevel) final switch (lv){
-			case all:case off: assert(0);
-			case trace: return FGColorBright.Blue;
-			case info: return FGColorBright.Green;
-			case warning: return FGColorBright.Magenta;
-			case error: return FGColorBright.Red;
-			case fatal: return FGColorBright.Cyan;
-		}
+	enum ColorSet: ColorBaseType{
+		trace	=FGColorBright.Blue,
+		info	=FGColorBright.Green,
+		warning	=FGColorBright.Magenta,
+		error	=FGColorBright.Red,
+		fatal	=FGColorBright.Cyan
 	}
+	alias getColor=dynamicEnumMap!(ColorSet,LogLevel);
 	void setColor(ColorBaseType fg){
 		if (_isColorizeStdErr)
 			setFGColorStdErr(fg);
@@ -199,13 +207,14 @@ private:
 		if (_isColorizeStdOut)
 			restore();
 	}
-	SysTime lastStamp;
+	SysTime lastTimeStamp;
 	bool isDateMarkRequired(SysTime curr){
-		bool r=!(curr.day==lastStamp.day
-			&& curr.month==lastStamp.month
-			&& curr.year==lastStamp.year);
-		lastStamp=curr;
-		return r;
+		if (curr.day==lastTimeStamp.day
+			&& curr.month==lastTimeStamp.month
+			&& curr.year==lastTimeStamp.year)
+			return false;
+		lastTimeStamp=curr;
+		return true;
 	}
 }
 
@@ -213,9 +222,9 @@ private void _loggingDaemon(){
 	Logger logger;
 	bool isRunning=true;
 	alias handlers=AliasSeq!(
-		(in LogEntry logEntry){
-			if(logger !is null)
-				logger.writelog(logEntry);
+		(LogEntry logEntry){
+			enforce!Error(logger !is null,"Logger hasn't initialized!");
+			logger.writelog(logEntry);
 		},
 		(Logger function() newLogger){
 			logger=newLogger();
@@ -223,7 +232,8 @@ private void _loggingDaemon(){
 		(OwnerTerminated o){
 			isRunning=false;
 		},
-		(Variant var){
+		(lazy Variant var){
+			enforce!Error(logger !is null,"Logger hasn't initialized!");
 			logger(var);
 		});
 	//Clean up rest Messages

@@ -10,10 +10,10 @@ Current Features
 ------------
  - Complete Multiple Inheritance
  - Cross-platform Colorized Terminal
+ - High-performance Multi-thread Logger
 
 
 TODO
 ------------
- - Merge SLogging Library
  - Add more featrues
  - Add this to the online D package registry

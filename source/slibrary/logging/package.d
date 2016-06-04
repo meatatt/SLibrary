@@ -8,23 +8,29 @@ public import slibrary.logging.impl: informDaemon,Logger,SLogger,globalogLevel;
 mixin LogAPI!defaultImpl;
 version (SLibraryVerboseUnittest) unittest{
 	import std.stdio: stdout,stderr;
+	// Initialize the Global Logger
 	informDaemon((){
-			SLogger l=new SLogger(LogLevel.min);
-			//l.insertFile(stdout);
-			l.insertFile(stderr);
-			//l.colorizeStdOut();
-			l.colorizeStdErr();
-			return cast(Logger)l;
+			SLogger sl=new SLogger(LogLevel.min);
+			//sl.insertFile(stdout);
+			sl.insertFile(stderr);
+			//sl.colorizeStdOut();
+			sl.colorizeStdErr();
+			Logger l=sl;
+			return l;
 		});
-	error(-1,"Errno can be specified.");
+	error!404("Errno can be specified.");
 	warning("If it is NOT specified, errno will be auto inferred from getErrno().");
 	globalogLevel=LogLevel.warning;
-	trace("Trace Msgs are only logged while debugging");
-	info("");
+	warning("Current Global LogLevel is ",globalogLevel);
+	trace("Trace Messages only would be logged while debugging");
+	info("This Message would be ignored due to current globalogLevel");
+	//Add log file to logger
 	informDaemon("log.txt");
-	fatal("This Msg is written into file log.txt");
+	fatal("This Message goes into file log.txt");
 	globalogLevel=LogLevel.min;
-	//TODO: Find a way to call removeFile()
-	info("So it is recommand that call info() at the end of a program.");
+	//Call it AGAIN to remove this file from logger
+	informDaemon("log.txt");
+	warning("Message would be auto generated from errno if not given.");
+	info("So it is recommand to place an info() at the end of program:");
 	info();
 }

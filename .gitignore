@@ -13,12 +13,11 @@
 
 # Executables
 *.exe
-__test__library__
+__test__*__
 
 # DUB
 .dub
 docs.json
-__dummy.html
 dub.selections.json
 
 # MonoD

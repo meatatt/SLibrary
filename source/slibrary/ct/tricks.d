@@ -1,22 +1,32 @@
 ﻿module slibrary.ct.tricks;
 
 import std.format: format;
-import std.meta: AliasSeq;
 
-import slibrary.ct.meta: toSymbols,SmartAlias;
-
-struct MemberMap(Type,alias Template){
-	alias opDispatch(string name)=SmartAlias!(Template!(
-			__traits(getMember,Type,name)));
+/** Creates a NEW enum type,
+ * every member of which is created
+ * by applying Template to the same name member under E
+*/
+template EnumMap(alias Template,E)if (is(E==enum)){
+	mixin (gencode());
+	string gencode(){if (__ctfe){string res;
+			foreach (name;__traits(allMembers,E))res~=q{
+				%1$s=Template!(E.%1$s),
+			}.format(name);return q{
+				enum EnumMap{%s}
+			}.format(res);}assert(0);}
 }
 
-template dynamicEnumMap(alias Template,Enum)if (is(Enum==enum)){
-	auto dynamicEnumMap(Enum e){
+/** Creates a function returning a member of T
+ * which has the same name to the input E
+*/
+template dynamicEnumMap(T,E)if (is(E==enum)&&is(T==enum)){
+	T dynamicEnumMap(E e){
 		final switch (e) mixin (gencode());
 	}
 	string gencode(){if (__ctfe){string res;
-			foreach (name;__traits(allMembers,Enum))res~=q{
-				case Enum.%1$s: return Template!(Enum.%1$s);
-			}.format(name);
+			foreach (name;__traits(allMembers,E))
+				static if (__traits(hasMember,T,name))res~=q{
+				case E.%1$s: return T.%1$s;}.format(name);else res~=q{
+				case E.%1$s: assert(0);}.format(name);
 			return res;}assert(0);}
 }
