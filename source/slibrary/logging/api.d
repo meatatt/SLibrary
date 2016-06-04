@@ -23,8 +23,8 @@ mixin template LogAPI(alias Impl){
 	import std.meta: Filter,Alias,staticIndexOf,staticMap;
 
 	import slibrary.logging.api: ArgFlags,TraceInfo;
-	import slibrary.ct.meta: toSymbols,ApplyLeft,TypeOf;
 	import slibrary.ct.predicate: isNonemptyTList,isFunction;
+	import slibrary.ct.meta: toSymbols,ApplyLeft,TypeOf,AliasSeq,None;
 
 	template log(CTArgs...){
 		void log(
@@ -33,8 +33,8 @@ mixin template LogAPI(alias Impl){
 			string funcName		 =__FUNCTION__,
 			string prettyFuncName=__PRETTY_FUNCTION__,
 			string moduleName	 =__MODULE__,
-			_Args...)(_Args _args){
-			auto traceInfo=new immutable TraceInfo(
+			_Args...)(lazy _Args _args){
+			static immutable auto traceInfo=TraceInfo(
 				line,file,funcName,prettyFuncName,moduleName);
 			mixin parseCTArgs!([],__traits(allMembers,LogArgDefine));
 			mixin (LogAPIMixin);
@@ -97,8 +97,14 @@ private:
 			alias _cur=toSymbols!(LogArgDefine,names[0]);
 			static assert (_cur[1]&ArgFlags.i,
 				"Unknow Arg: "~_cur[0].stringof~" "~names[0]);
-			static if (isFunction!(_cur[2]))
-				mixin (q{auto %1$s=_cur[2]();}.format(names[0]));
+			static if (_cur.length>3||isFunction!(_cur[2])){
+				template Params(){alias Params=None;}
+				template Params(string n,a...){
+					alias Params=AliasSeq!(mixin(n),Params!a);
+				}
+				alias params=Params!(_cur[3..$]);
+				mixin (q{auto %1$s=_cur[2](params);}.format(names[0]));
+			}
 			else
 				mixin (q{alias %1$s=Alias!(_cur[2]);}.format(names[0]));
 			mixin autoInitArgs!(names[1..$]);

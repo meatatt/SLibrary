@@ -1,11 +1,16 @@
 ﻿module slibrary.colorize;
 
 import std.stdio: stderr,stdout;
-import slibrary.ct.meta: staticSelect,Pred,ApplyLeft;
+
+import slibrary.ct.tricks: MemberMap;
+import slibrary.ct.meta: staticSelect,staticFunction,Pred,ApplyLeft;
+
+alias FGColorBright=MemberMap!(FGColor,staticFunction!Bright);
+alias BGColorBright=MemberMap!(BGColor,staticFunction!Bright);
 
 alias setFGColor=ApplyLeft!(setColor,false);
-alias setFGColorStdErr=setFGColor!true;
 alias setBGColor=ApplyLeft!(setColor,true);
+alias setFGColorStdErr=setFGColor!true;
 alias setBGColorStdErr=setBGColor!true;
 alias restoreStdErr=restore!true;
 

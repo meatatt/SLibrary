@@ -60,6 +60,10 @@ template staticSelect(alias pred,alias True,alias False){
 	}
 }
 
+template staticFunction(alias func){
+	enum staticFunction(args...)=func(args);
+}
+
 deprecated
 alias staticFind(alias pred,Args...)=staticFindImpl!(0,pred,Args);
 private enum staticFindImpl(size_t Index,alias pred)=-1;
